@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import aiohttp
@@ -28,7 +29,11 @@ _LOGGER = logging.getLogger(__name__)
 async def _discover_sensors(
     session: aiohttp.ClientSession, city_slug: str
 ) -> list[dict[str, str]] | None:
-    """Scrape the city page and return a list of sensors.
+    """Scrape the city page and discover sensors from the JS markers array.
+
+    The page embeds:
+      var markers = [["Name", lat, lng, aqi,
+        "<a ... href=\\\"/en/{city}/sensors/{slug}\\\">Name</a>"], ...]
 
     Returns [{slug, name}, ...] or None if city not found.
     """
@@ -44,48 +49,50 @@ async def _discover_sensors(
         _LOGGER.warning("Failed to fetch city page %s: %s", url, err)
         return None
 
+    # Find the `var markers` JavaScript array
+    markers_match = re.search(
+        r"var markers\s*=\s*(\[[\s\S]*?\])\s*;",
+        html,
+    )
+    if not markers_match:
+        _LOGGER.warning("No markers array found on city page %s", url)
+        return []
+
+    markers_json = markers_match.group(1)
+
+    # Parse sensor entries from the markers array.
+    # The HTML inside uses escaped quotes: href=\"...\", class=\"...\"
+    # In the Python string these are literal backslash + double-quote.
     sensors: list[dict[str, str]] = []
-    # City page uses data-remote="true" to mark sensor links:
-    #   <a class="sensor-link-remote" id="..." data-remote="true"
-    #      href="/en/{city}/sensors/{slug}">Name</a>
-    idx = 0
-    while True:
-        link_start = html.find('data-remote="true"', idx)
-        if link_start == -1:
-            break
+    seen_slugs: set[str] = set()
 
-        href_start = html.find('href="', link_start)
-        if href_start == -1:
-            idx = link_start + 1
-            continue
-        href_end = html.find('"', href_start + 6)
-        if href_end == -1:
-            idx = link_start + 1
-            continue
-        href = html[href_start + 6 : href_end]
+    # Regex: href=\" + /en/{city}/sensors/{slug} + \"
+    # In raw string: href=\\"  = literal backslash + quote
+    slug_pattern = re.compile(
+        r'href=\\"/en/' + re.escape(city_slug) + r'/sensors/([^\\"/]+)\\"'
+    )
 
-        sensor_slug = href.rsplit("/", 1)[-1] if "/" in href else ""
-        if not sensor_slug:
-            idx = link_start + 1
+    for m in slug_pattern.finditer(markers_json):
+        slug = m.group(1)
+        if slug in seen_slugs:
             continue
+        seen_slugs.add(slug)
 
-        # Extract name: text after > and before </a>
-        gt = html.find(">", href_end)
+        # Extract sensor name between > and </a>
+        a_end = m.end()
+        gt = markers_json.find(">", a_end)
         if gt == -1:
-            idx = link_start + 1
             continue
-        name_start = gt + 1
-        name_end = html.find("</a>", name_start)
-        if name_end == -1:
-            idx = link_start + 1
+        close = markers_json.find("</a>", gt)
+        if close == -1:
             continue
-        name = html[name_start:name_end].strip()
+        name = markers_json[gt + 1 : close].strip()
         if not name:
-            name = sensor_slug
+            name = slug
 
-        sensors.append({"slug": sensor_slug, "name": name})
-        idx = name_end + 4
+        sensors.append({"slug": slug, "name": name})
 
+    _LOGGER.debug("Discovered %d sensors in '%s'", len(sensors), city_slug)
     return sensors
 
 
@@ -111,10 +118,9 @@ class NeboLiveConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[CONF_CITY_SLUG] = "no_sensors"
             else:
                 city_name = KNOWN_CITIES.get(city_slug, city_slug.capitalize())
-                sensor_ids = [s["slug"] for s in sensors]
                 _LOGGER.debug(
-                    "Discovered %d sensors in '%s': %s",
-                    len(sensors), city_slug, sensor_ids
+                    "Discovered %d sensors in '%s'",
+                    len(sensors), city_slug,
                 )
 
                 return self.async_create_entry(
