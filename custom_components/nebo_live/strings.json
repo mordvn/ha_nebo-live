@@ -1,0 +1,56 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Nebo.Live Air Quality",
+                "description": "Enter the city slug from nebo.live.\n\nExamples: {example_cities}\n\nFor Krasnoyarsk, the slug is \"krs\":\nhttps://nebo.live/en/krs"
+            }
+        },
+        "error": {
+            "city_not_found": "City not found. Check the slug and try again (e.g., \"krs\" for Krasnoyarsk).",
+            "no_sensors": "No sensors found in this city."
+        },
+        "abort": {
+            "single_instance_allowed": "Already configured. You can add more sensors in Options."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Nebo.Live Settings",
+                "description": "Change the data update interval (default is 10 minutes).",
+                "data": {
+                    "scan_interval": "Update interval (seconds)"
+                },
+                "data_description": {
+                    "scan_interval": "From 60 (1 minute) to 86400 (24 hours)"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "aqi": {
+                "name": "AQI"
+            },
+            "pm25": {
+                "name": "PM2.5"
+            },
+            "pm10": {
+                "name": "PM10"
+            },
+            "pm01": {
+                "name": "PM1"
+            },
+            "temperature": {
+                "name": "Temperature"
+            },
+            "humidity": {
+                "name": "Humidity"
+            },
+            "pressure": {
+                "name": "Pressure"
+            }
+        }
+    }
+}

@@ -1,0 +1,56 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Nebo.Live — Качество воздуха",
+                "description": "Введите slug города с nebo.live.\n\nПримеры: {example_cities}\n\nДля Красноярска slug — \"krs\":\nhttps://nebo.live/ru/krs"
+            }
+        },
+        "error": {
+            "city_not_found": "Город не найден. Проверьте slug (например, \"krs\" для Красноярска).",
+            "no_sensors": "В этом городе нет датчиков."
+        },
+        "abort": {
+            "single_instance_allowed": "Уже настроено. Вы можете добавить больше городов через Настройки."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Настройки Nebo.Live",
+                "description": "Измените интервал обновления данных (по умолчанию 10 минут).",
+                "data": {
+                    "scan_interval": "Интервал обновления (секунд)"
+                },
+                "data_description": {
+                    "scan_interval": "От 60 (1 минута) до 86400 (24 часа)"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "aqi": {
+                "name": "ИКВ"
+            },
+            "pm25": {
+                "name": "PM2.5"
+            },
+            "pm10": {
+                "name": "PM10"
+            },
+            "pm01": {
+                "name": "PM1"
+            },
+            "temperature": {
+                "name": "Температура"
+            },
+            "humidity": {
+                "name": "Влажность"
+            },
+            "pressure": {
+                "name": "Давление"
+            }
+        }
+    }
+}
