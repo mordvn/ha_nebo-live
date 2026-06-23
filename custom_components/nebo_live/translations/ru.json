@@ -4,26 +4,42 @@
             "user": {
                 "title": "Nebo.Live — Качество воздуха",
                 "description": "Введите slug города с nebo.live.\n\nПримеры: {example_cities}\n\nДля Красноярска slug — \"krs\":\nhttps://nebo.live/ru/krs"
+            },
+            "select_sensors": {
+                "title": "Выберите датчики — {city_name}",
+                "description": "Найдено {sensor_count} датчиков. Выберите, какие отслеживать:",
+                "data": {
+                    "selected_sensors": "Датчики"
+                }
             }
         },
         "error": {
             "city_not_found": "Город не найден. Проверьте slug (например, \"krs\" для Красноярска).",
-            "no_sensors": "В этом городе нет датчиков."
+            "no_sensors": "В этом городе нет датчиков.",
+            "no_selection": "Выберите хотя бы один датчик."
         },
         "abort": {
-            "single_instance_allowed": "Уже настроено. Вы можете добавить больше городов через Настройки."
+            "single_instance_allowed": "Уже настроено."
         }
     },
     "options": {
         "step": {
             "init": {
                 "title": "Настройки Nebo.Live",
-                "description": "Измените интервал обновления данных (по умолчанию 10 минут).",
+                "description": "Измените интервал обновления или выберите другие датчики.",
                 "data": {
-                    "scan_interval": "Интервал обновления (секунд)"
+                    "scan_interval": "Интервал (секунд)",
+                    "configure": "Что изменить"
                 },
                 "data_description": {
                     "scan_interval": "От 60 (1 минута) до 86400 (24 часа)"
+                }
+            },
+            "select_sensors": {
+                "title": "Выберите датчики — {city_name}",
+                "description": "Выберите, какие датчики отслеживать:",
+                "data": {
+                    "selected_sensors": "Датчики"
                 }
             }
         }

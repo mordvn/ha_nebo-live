@@ -12,6 +12,11 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from .const import (
     BASE_URL,
@@ -60,14 +65,9 @@ async def _discover_sensors(
 
     markers_json = markers_match.group(1)
 
-    # Parse sensor entries from the markers array.
-    # The HTML inside uses escaped quotes: href=\"...\", class=\"...\"
-    # In the Python string these are literal backslash + double-quote.
     sensors: list[dict[str, str]] = []
     seen_slugs: set[str] = set()
 
-    # Regex: href=\" + /en/{city}/sensors/{slug} + \"
-    # In raw string: href=\\"  = literal backslash + quote
     slug_pattern = re.compile(
         r'href=\\"/en/' + re.escape(city_slug) + r'/sensors/([^\\"/]+)\\"'
     )
@@ -78,7 +78,6 @@ async def _discover_sensors(
             continue
         seen_slugs.add(slug)
 
-        # Extract sensor name between > and </a>
         a_end = m.end()
         gt = markers_json.find(">", a_end)
         if gt == -1:
@@ -96,15 +95,22 @@ async def _discover_sensors(
     return sensors
 
 
+# ── Config flow ─────────────────────────────────────────────────────
+
 class NeboLiveConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Nebo.Live."""
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        """Initialize."""
+        self._city_slug: str = ""
+        self._discovered_sensors: list[dict[str, str]] = []
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Step 1: ask for city slug, auto-discover all sensors."""
+        """Step 1: ask for city slug, discover sensors."""
         errors = {}
 
         if user_input is not None:
@@ -117,19 +123,9 @@ class NeboLiveConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             elif not sensors:
                 errors[CONF_CITY_SLUG] = "no_sensors"
             else:
-                city_name = KNOWN_CITIES.get(city_slug, city_slug.capitalize())
-                _LOGGER.debug(
-                    "Discovered %d sensors in '%s'",
-                    len(sensors), city_slug,
-                )
-
-                return self.async_create_entry(
-                    title=f"Nebo.Live {city_name}",
-                    data={
-                        CONF_CITY_SLUG: city_slug,
-                        "sensors": sensors,
-                    },
-                )
+                self._city_slug = city_slug
+                self._discovered_sensors = sensors
+                return await self.async_step_select_sensors()
 
         known_list = ", ".join(
             f"{k} ({v})" for k, v in list(KNOWN_CITIES.items())[:8]
@@ -148,6 +144,62 @@ class NeboLiveConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
+    async def async_step_select_sensors(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Step 2: let user pick which sensors to track."""
+        errors = {}
+
+        if user_input is not None:
+            selected_slugs: list[str] = user_input.get("selected_sensors", [])
+            if not selected_slugs:
+                errors["selected_sensors"] = "no_selection"
+            else:
+                # Filter discovered sensors to only selected ones
+                selected = [
+                    s for s in self._discovered_sensors
+                    if s["slug"] in selected_slugs
+                ]
+                city_name = KNOWN_CITIES.get(
+                    self._city_slug, self._city_slug.capitalize()
+                )
+
+                return self.async_create_entry(
+                    title=f"Nebo.Live {city_name}",
+                    data={
+                        CONF_CITY_SLUG: self._city_slug,
+                        "sensors": selected,
+                    },
+                )
+
+        # Build multi-select with sensor addresses as labels
+        options = [
+            {"value": s["slug"], "label": s["name"]}
+            for s in self._discovered_sensors
+        ]
+
+        data_schema = vol.Schema({
+            vol.Required("selected_sensors", default=[]): SelectSelector(
+                SelectSelectorConfig(
+                    options=options,
+                    multiple=True,
+                    mode=SelectSelectorMode.LIST,
+                )
+            ),
+        })
+
+        return self.async_show_form(
+            step_id="select_sensors",
+            data_schema=data_schema,
+            errors=errors,
+            description_placeholders={
+                "city_name": KNOWN_CITIES.get(
+                    self._city_slug, self._city_slug.capitalize()
+                ),
+                "sensor_count": str(len(self._discovered_sensors)),
+            },
+        )
+
     @staticmethod
     @callback
     def async_get_options_flow(
@@ -156,26 +208,117 @@ class NeboLiveConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return NeboLiveOptionsFlowHandler()
 
 
+# ── Options flow ────────────────────────────────────────────────────
+
 class NeboLiveOptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle Nebo.Live options."""
+    """Handle Nebo.Live options — scan interval + sensor re-selection."""
+
+    def __init__(self) -> None:
+        """Initialize."""
+        self._city_slug: str = ""
+        self._discovered_sensors: list[dict[str, str]] = []
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Manage options."""
+        """Options menu: choose what to configure."""
         if user_input is not None:
+            if user_input.get("configure") == "sensors":
+                # Re-discover and go to sensor selection
+                self._city_slug = self.config_entry.data[CONF_CITY_SLUG]
+                session = async_get_clientsession(self.hass)
+                sensors = await _discover_sensors(session, self._city_slug)
+                if sensors:
+                    self._discovered_sensors = sensors
+                    return await self.async_step_select_sensors()
+                else:
+                    return self.async_abort(reason="no_sensors")
+
+            # Otherwise update scan interval
             return self.async_create_entry(title="", data=user_input)
 
         current_interval = self.config_entry.options.get(
             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
         )
 
+        data_schema = vol.Schema({
+            vol.Required(
+                CONF_SCAN_INTERVAL,
+                default=current_interval,
+            ): vol.All(vol.Coerce(int), vol.Range(min=60, max=86400)),
+            vol.Required("configure", default="interval"): vol.In({
+                "interval": "Change update interval (seconds)",
+                "sensors": "Re-select which sensors to track",
+            }),
+        })
+
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({
-                vol.Required(
-                    CONF_SCAN_INTERVAL,
-                    default=current_interval,
-                ): vol.All(vol.Coerce(int), vol.Range(min=60, max=86400)),
-            }),
+            data_schema=data_schema,
+        )
+
+    async def async_step_select_sensors(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Re-select sensors (from options flow)."""
+        errors = {}
+
+        if user_input is not None:
+            selected_slugs: list[str] = user_input.get("selected_sensors", [])
+            if not selected_slugs:
+                errors["selected_sensors"] = "no_selection"
+            else:
+                selected = [
+                    s for s in self._discovered_sensors
+                    if s["slug"] in selected_slugs
+                ]
+                # Update the config entry data with new sensor selection
+                new_data = dict(self.config_entry.data)
+                new_data["sensors"] = selected
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry, data=new_data
+                )
+                # Trigger reload so new set of sensors takes effect
+                await self.hass.config_entries.async_reload(
+                    self.config_entry.entry_id
+                )
+                return self.async_create_entry(title="", data=self.config_entry.options)
+
+        # Preselect current sensors
+        current_slugs = {
+            s["slug"]
+            for s in self.config_entry.data.get("sensors", [])
+        }
+        default_selection = [
+            s["slug"] for s in self._discovered_sensors
+            if s["slug"] in current_slugs
+        ]
+
+        options = [
+            {"value": s["slug"], "label": s["name"]}
+            for s in self._discovered_sensors
+        ]
+
+        data_schema = vol.Schema({
+            vol.Required(
+                "selected_sensors",
+                default=default_selection,
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=options,
+                    multiple=True,
+                    mode=SelectSelectorMode.LIST,
+                )
+            ),
+        })
+
+        return self.async_show_form(
+            step_id="select_sensors",
+            data_schema=data_schema,
+            errors=errors,
+            description_placeholders={
+                "city_name": KNOWN_CITIES.get(
+                    self._city_slug, self._city_slug.capitalize()
+                ),
+            },
         )

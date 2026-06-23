@@ -4,11 +4,19 @@
             "user": {
                 "title": "Nebo.Live Air Quality",
                 "description": "Enter the city slug from nebo.live.\n\nExamples: {example_cities}\n\nFor Krasnoyarsk, the slug is \"krs\":\nhttps://nebo.live/en/krs"
+            },
+            "select_sensors": {
+                "title": "Select Sensors — {city_name}",
+                "description": "Found {sensor_count} sensors. Select which ones to track:",
+                "data": {
+                    "selected_sensors": "Sensors"
+                }
             }
         },
         "error": {
             "city_not_found": "City not found. Check the slug and try again (e.g., \"krs\" for Krasnoyarsk).",
-            "no_sensors": "No sensors found in this city."
+            "no_sensors": "No sensors found in this city.",
+            "no_selection": "Please select at least one sensor."
         },
         "abort": {
             "single_instance_allowed": "Already configured. You can add more sensors in Options."
@@ -18,12 +26,20 @@
         "step": {
             "init": {
                 "title": "Nebo.Live Settings",
-                "description": "Change the data update interval (default is 10 minutes).",
+                "description": "Change the update interval or re-select which sensors to track.",
                 "data": {
-                    "scan_interval": "Update interval (seconds)"
+                    "scan_interval": "Update interval (seconds)",
+                    "configure": "What to change"
                 },
                 "data_description": {
                     "scan_interval": "From 60 (1 minute) to 86400 (24 hours)"
+                }
+            },
+            "select_sensors": {
+                "title": "Re-select Sensors — {city_name}",
+                "description": "Select which sensors to track:",
+                "data": {
+                    "selected_sensors": "Sensors"
                 }
             }
         }
