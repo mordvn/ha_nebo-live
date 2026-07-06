@@ -12,7 +12,7 @@ Home Assistant custom component that monitors air quality from [Nebo.Live](https
 - **Configurable scan interval** (default 10 min)
 - **Device grouping** — all metrics from one sensor grouped under a single device
 
-## 📦 Installation
+## Installation
 
 ### HACS (recommended)
 
@@ -52,12 +52,12 @@ Each sensor creates the following entities:
 | `sensor.nebo_{name}_humidity` | Humidity | % |
 | `sensor.nebo_{name}_pressure` | Pressure | hPa |
 
-## 🐛 Known limitations
+## Known limitations
 
 - Data updates are delayed — nebo.live itself doesn't update in real time
 - The component parses HTML — site layout changes may break it (PRs welcome)
 - Minimum recommended scan interval is 5 minutes
 
-## 📄 License
+## License
 
 See [LICENSE](LICENSE).
