@@ -109,26 +109,28 @@ SENSOR_DESCRIPTIONS: dict[str, SensorEntityDescription] = {
 def _parse_sensor_page(html: str, slug: str) -> dict[str, Any]:
     """Parse a sensor detail page and return all metrics.
 
-    The HTML uses single quotes for most attributes and HTML entities
-    for micro (µ = &micro;) and degree (° = &deg;).
+    The HTML may use single or double quotes for attributes.
+    HTML entities for micro (µ = &micro;) and degree (° = &deg;) are normalized.
 
     Returns dict with keys from METRICS plus 'name', 'city', 'last_updated'.
     """
     data: dict[str, Any] = {}
 
+    # Regex helper: matches either ' or " for HTML attribute quoting
+    Q = "['\"]"
+
     # Normalize HTML entities so regex patterns can match plain characters
-    # &deg; is the correct form; &degC appears in the wild (no semicolon before C)
     html = html.replace("&deg;", "°").replace("&deg", "°")
     html = html.replace("&micro;", "µ")
 
     # --- Sensor name ---
-    m = re.search(r"<div class='title-adr'>\s*(.*?)\s*</div>", html)
+    m = re.search(fr"<div class={Q}title-adr{Q}>\s*(.*?)\s*</div>", html)
     if m:
         data["name"] = m.group(1).strip()
 
     # --- City name ---
     m = re.search(
-        r"<div class='title-city'>\s*<a[^>]*>(.*?)</a>\s*</div>", html
+        fr"<div class={Q}title-city{Q}>\s*<a[^>]*>(.*?)</a>\s*</div>", html
     )
     if m:
         data["city"] = m.group(1).strip()
@@ -139,24 +141,18 @@ def _parse_sensor_page(html: str, slug: str) -> dict[str, Any]:
         data[ATTR_LAST_UPDATED] = m.group(1)
 
     # --- AQI ---
-    # <div class='value zone1' style='width: 8.3%'>
-    #   <div class='text'>\n25\n</div>
-    #   <div class='measure'>\naqi\n</div>
-    # </div>
     m = re.search(
-        r"<div class='value zone\d'[^>]*>\s*<div class='text'>\s*(\d+)\s*</div>\s*<div class='measure'>\s*aqi",
+        fr"<div class={Q}value zone\d{Q}[^>]*>\s*<div class={Q}text{Q}>\s*(\d+)\s*</div>\s*<div class={Q}measure{Q}>\s*aqi",
         html,
     )
     if m:
         data[ATTR_AQI] = int(m.group(1))
 
     # --- PM2.5, PM1, PM10 ---
-    # Pattern:
-    #   ...PM2.5\n</div>\n<div class='value'>\n<div class='text'>\n6 µg/m<sup>3</sup>\n</div>
     pm_patterns = {
-        ATTR_PM25: r"PM2\.5.*?<div class='text'>\s*(\d+(?:\.\d+)?)\s*µg/m",
-        ATTR_PM01: r"PM1[^05].*?<div class='text'>\s*(\d+(?:\.\d+)?)\s*µg/m",
-        ATTR_PM10: r"PM10.*?<div class='text'>\s*(\d+(?:\.\d+)?)\s*µg/m",
+        ATTR_PM25: fr"PM2\.5.*?<div class={Q}text{Q}>\s*(\d+(?:\.\d+)?)\s*µg/m",
+        ATTR_PM01: fr"PM1[^05].*?<div class={Q}text{Q}>\s*(\d+(?:\.\d+)?)\s*µg/m",
+        ATTR_PM10: fr"PM10.*?<div class={Q}text{Q}>\s*(\d+(?:\.\d+)?)\s*µg/m",
     }
     for key, pattern in pm_patterns.items():
         m = re.search(pattern, html, re.DOTALL)
@@ -170,16 +166,9 @@ def _parse_sensor_page(html: str, slug: str) -> dict[str, Any]:
                     pass
 
     # --- Temperature, Humidity, Pressure ---
-    # Structure:
-    #   <div class='temp-item'>
-    #     <div class='temp-title'>
-    #       <img alt="temperature" ... />\n      Temperature\n    </div>
-    #     <div class='value'>\n      21°C\n    </div>
-    #   </div>
-
-    # Temperature: img alt="temperature" .../>\nTemperature\n</div>\n<div class='value'>\n21°C
+    # Temperature
     m = re.search(
-        r'alt="temperature"[^>]*/>.*?</div>\s*<div class=\'value\'>\s*(\d+(?:\.\d+)?)\s*°C',
+        fr'alt={Q}temperature{Q}[^>]*/?>.*?</div>\s*<div class={Q}value{Q}>\s*(\d+(?:\.\d+)?)\s*°C',
         html,
         re.DOTALL,
     )
@@ -189,9 +178,9 @@ def _parse_sensor_page(html: str, slug: str) -> dict[str, Any]:
         except ValueError:
             pass
 
-    # Humidity: img alt="humidity" .../>\nHumidity\n</div>\n<div class='value'>\n49%
+    # Humidity
     m = re.search(
-        r'alt="humidity"[^>]*/>.*?</div>\s*<div class=\'value\'>\s*(\d+(?:\.\d+)?)\s*%',
+        fr'alt={Q}humidity{Q}[^>]*/?>.*?</div>\s*<div class={Q}value{Q}>\s*(\d+(?:\.\d+)?)\s*%',
         html,
         re.DOTALL,
     )
@@ -201,9 +190,9 @@ def _parse_sensor_page(html: str, slug: str) -> dict[str, Any]:
         except ValueError:
             pass
 
-    # Pressure: img alt="pressure" .../>\nPressure\n</div>\n<div class='value'>\n993 hPa
+    # Pressure
     m = re.search(
-        r'alt="pressure"[^>]*/>.*?</div>\s*<div class=\'value\'>\s*(\d+(?:\.\d+)?)\s*hPa',
+        fr'alt={Q}pressure{Q}[^>]*/?>.*?</div>\s*<div class={Q}value{Q}>\s*(\d+(?:\.\d+)?)\s*hPa',
         html,
         re.DOTALL,
     )
