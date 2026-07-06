@@ -1,6 +1,6 @@
 {
     "domain": "nebo_live",
-    "name": "Nebo.Live Air Quality",
+    "name": "Nebo.Live",
     "codeowners": [
         "@mordvn"
     ],
@@ -10,7 +10,7 @@
     "hacs": "2.0.0",
     "integration_type": "hub",
     "iot_class": "cloud_polling",
-    "issue_tracker": "https://github.com/mordvn/ha_nebo_live/issues",
+    "issue_tracker": "https://github.com/mordvn/ha_nebo-live/issues",
     "requirements": [],
     "version": "1.0.0"
 }

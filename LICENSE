@@ -1,0 +1,33 @@
+MIT License with Personal Use Restriction
+
+Copyright (c) 2025-Present Artyom Mordovan (mordvn)
+
+This software is provided for **personal, non-commercial use only**.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software (the "Software"), to use the Software for personal purposes
+within a private Home Assistant installation, subject to the following conditions:
+
+1. **Attribution**: The above copyright notice and this permission notice shall
+   be included in all copies or substantial portions of the Software. Any public
+   display, video, or documentation featuring this Software must credit
+   **Artyom Mordovan** as the original author.
+
+2. **No Redistribution**: Redistribution of the source code, binary forms, or
+   modified versions of the Software (including but not limited to hosting on
+   other repositories, add-on stores, or bundling with other software) is
+   **strictly prohibited** without prior written permission from the copyright
+   holder.
+
+3. **No Commercial Use**: Use of the Software for any commercial purpose
+   (including but not limited to paid support, installation services, or
+   bundling with sold hardware) is **strictly prohibited**.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+

@@ -256,7 +256,7 @@ class NeboLiveCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             url = f"{BASE_URL}/en/{self._city_slug}/sensors/{slug}"
             try:
                 async with self._session.get(
-                    url, headers=HEADERS, timeout=aiohttp.ClientTimeout(total=15)
+                    url, headers=HEADERS, timeout=aiohttp.ClientTimeout(total=30)
                 ) as resp:
                     if resp.status == 200:
                         html = await resp.text()
@@ -273,7 +273,10 @@ class NeboLiveCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                         )
                         return slug, {}
             except (aiohttp.ClientError, TimeoutError, asyncio.TimeoutError) as err:
-                _LOGGER.warning("Failed to fetch sensor %s: %s", slug, err)
+                _LOGGER.warning(
+                    "Failed to fetch sensor %s: %s (%s)",
+                    slug, err, type(err).__name__,
+                )
                 return slug, {}
 
         # Fetch all sensors in parallel
