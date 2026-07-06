@@ -2,7 +2,9 @@
 
 Home Assistant custom component that monitors air quality from [Nebo.Live](https://nebo.live) public sensors. No API key required — data is scraped from the public sensor page.
 
-![Demo](media/demo.png)
+<p>
+   <img src="media/demo.png" width="450" alt="Demo image">
+</p>
 
 ## Features
 
